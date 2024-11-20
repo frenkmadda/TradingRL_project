@@ -1,0 +1,6 @@
+gym-anytrading~=2.0.0
+gymnasium~=1.0.0
+jupyter~=1.1.1
+quantstats~=0.0.64
+seaborn~=0.13.2
+stable-baselines3[extra]~=2.4.0
