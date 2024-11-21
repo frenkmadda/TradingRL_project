@@ -28,8 +28,15 @@ def save_data(data, name):
         df = pd.read_csv(f"{folder}/{item.lower()}.csv")
         df.drop([0, 1], inplace=True)
         df.rename(columns={"Price": "Date"}, inplace=True)
+        df.drop("Close", axis=1, inplace=True)  # Remove "Close" column ("Adj Close" is better)
+
+        if name != "stocks":
+            # Remove last row ("Close" value is wrong in the current day)
+            df.drop(df.tail(1).index, inplace=True)
         if name == "forex":
+            # "Volume" is always zero in forex data
             df.drop("Volume", axis=1, inplace=True)
+
         df.to_csv(f"{folder}/{item.lower()}.csv", index=False)
 
 
