@@ -19,8 +19,8 @@ class CryptoEnv(TradingEnv):
     def _process_data(self):
         # Extracts the 'Close' prices from the data frame.
         # Computes the price differences and combines them with the prices to form signal features.
-        prices = self.df.loc[:, 'Close'].to_numpy()
-        prices = prices[self.frame_bound[0] - self.window_size:self.frame_bound[1]]
+        prices = self.df.loc[:, "Close"].to_numpy()
+        prices = prices[self.frame_bound[0] - self.window_size : self.frame_bound[1]]
 
         diff = np.diff(prices)
         signal_features = np.column_stack((prices, diff))
@@ -51,19 +51,15 @@ class CryptoEnv(TradingEnv):
     def max_possible_profit(self):
         # Calculates the maximum possible profit by finding the difference between the maximum and minimum prices within
         # the frame bounds
-        prices = self.df.loc[:, 'Close'].to_numpy()
-        prices = prices[self.frame_bound[0]:self.frame_bound[1]]
+        prices = self.df.loc[:, "Close"].to_numpy()
+        prices = prices[self.frame_bound[0] : self.frame_bound[1]]
 
         return np.max(prices) - np.min(prices)
 
 
-c_df = pd.read_csv('data/crypto/btc-usd.csv')
+c_df = pd.read_csv("data/crypto/btc-usd.csv")
 register(
-    id='crypto-v0',
-    entry_point='crypto_env:CryptoEnv',
-    kwargs={
-        'df': c_df,
-        'window_size': 30,
-        'frame_bound': (30, len(c_df))
-    }
+    id="crypto-v0",
+    entry_point="crypto_env:CryptoEnv",
+    kwargs={"df": c_df, "window_size": 30, "frame_bound": (30, len(c_df))},
 )
