@@ -47,7 +47,7 @@ def train_test_model(model, gym_env, seed=69, total_learning_timesteps=1_000_000
 
     tbar.close()
     gym_env.close()
-    return reward_over_episodes
+    return reward_over_episodes, info
 
 
 def get_results(reward_over_episodes, model_name, print_results=False):

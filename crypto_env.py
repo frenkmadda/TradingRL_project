@@ -6,10 +6,11 @@ from gymnasium.envs.registration import register
 
 
 class CryptoEnv(TradingEnv):
-    def __init__(self, df, window_size, frame_bound, render_mode=None):
+    def __init__(self, df, window_size, frame_bound, trade_fee=0.001, render_mode=None):
         assert len(frame_bound) == 2
 
         self.frame_bound = frame_bound
+        self.trade_fee = trade_fee #fee of 0.1% per trade
         self.current_price = None
         self.total_profit = 0
         self.open_price = None
@@ -19,42 +20,93 @@ class CryptoEnv(TradingEnv):
     def _process_data(self):
         # Extracts the 'Close' prices from the data frame.
         # Computes the price differences and combines them with the prices to form signal features.
-        prices = self.df.loc[:, "Close"].to_numpy()
-        prices = prices[self.frame_bound[0] - self.window_size : self.frame_bound[1]]
+        prices = self.df.loc[:, 'Close'].to_numpy()
 
-        diff = np.diff(prices)
+        # prices[self.frame_bound[0] - self.window_size]  # validate index
+        prices = prices[self.frame_bound[0] - self.window_size:self.frame_bound[1]]
+
+        diff = np.insert(np.diff(prices), 0, 0)
         signal_features = np.column_stack((prices, diff))
 
-        return prices, signal_features
+        return prices.astype(np.float32), signal_features.astype(np.float32)
 
     def _calculate_reward(self, action):
-        # Calculates the reward based on the action taken (Buy or Sell) and the current position (Long or Short).
-        # The reward is the difference between the current price and the open price.
         step_reward = 0
-        self.current_price = self.prices[self._current_tick]
 
-        if action == Actions.Buy and self._position == Positions.Short:
-            step_reward = self.current_price - self.open_price
-        elif action == Actions.Sell and self._position == Positions.Long:
-            step_reward = self.open_price - self.current_price
+        trade = False
+        if (
+                (action == Actions.Buy.value and self._position == Positions.Short) or
+                (action == Actions.Sell.value and self._position == Positions.Long)
+        ):
+            trade = True
+
+        if trade:
+            current_price = self.prices[self._current_tick]
+            last_trade_price = self.prices[self._last_trade_tick]
+            price_diff = current_price - last_trade_price
+
+            if self._position == Positions.Short:
+                step_reward += -price_diff
+            elif self._position == Positions.Long:
+                step_reward += price_diff
 
         return step_reward
 
     def _update_profit(self, action):
-        # Updates the total profit based on the action taken (Buy or Sell) and the current position (Long or Short).
-        # The total profit is the sum of the differences between the current price and the open price.
-        if action == Actions.Buy and self._position == Positions.Short:
-            self.total_profit += self.current_price - self.open_price
-        elif action == Actions.Sell and self._position == Positions.Long:
-            self.total_profit += self.open_price - self.current_price
+        trade = False
+        if (
+            (action == Actions.Buy.value and self._position == Positions.Short) or
+            (action == Actions.Sell.value and self._position == Positions.Long)
+        ):
+            trade = True
+
+        if trade or self._truncated:
+            current_price = self.prices[self._current_tick]
+            last_trade_price = self.prices[self._last_trade_tick]
+
+            if self._position == Positions.Long:
+                shares = (self._total_profit * (1 - self.trade_fee)) / last_trade_price
+                self._total_profit = (shares * (1 - self.trade_fee)) * current_price
+            elif self._position == Positions.Short:
+                shares = (self._total_profit * (1 - self.trade_fee)) / current_price
+                self._total_profit = (shares * (1 - self.trade_fee)) * last_trade_price
+
 
     def max_possible_profit(self):
-        # Calculates the maximum possible profit by finding the difference between the maximum and minimum prices within
-        # the frame bounds
-        prices = self.df.loc[:, "Close"].to_numpy()
-        prices = prices[self.frame_bound[0] : self.frame_bound[1]]
+        current_tick = self._start_tick
+        last_trade_tick = current_tick - 1
+        profit = 1.
 
-        return np.max(prices) - np.min(prices)
+        while current_tick <= self._end_tick:
+            position = None
+            if self.prices[current_tick] < self.prices[current_tick - 1]:
+                while (current_tick <= self._end_tick and
+                       self.prices[current_tick] < self.prices[current_tick - 1]):
+                    current_tick += 1
+                position = Positions.Short
+            else:
+                while (current_tick <= self._end_tick and
+                       self.prices[current_tick] >= self.prices[current_tick - 1]):
+                    current_tick += 1
+                position = Positions.Long
+
+            if position == Positions.Long:
+                current_price = self.prices[current_tick - 1]
+                last_trade_price = self.prices[last_trade_tick]
+                shares = profit / last_trade_price
+                profit = shares * current_price * (1 - self.trade_fee)
+            elif position == Positions.Short:
+                current_price = self.prices[current_tick - 1]
+                last_trade_price = self.prices[last_trade_tick]
+                shares = profit / current_price
+                profit = shares * last_trade_price * (1 - self.trade_fee)
+
+            last_trade_tick = current_tick - 1
+
+        return profit
+
+    def get_total_profit(self):
+        return self._total_profit
 
 
 c_df = pd.read_csv("data/crypto/btc-usd.csv")
