@@ -2,12 +2,13 @@ import os
 from datetime import datetime
 
 import yfinance as yf
+from pandas import DataFrame
 
 
 def main():
-    stocks = ["AAPL", "MSFT", "AMZN", "GOOG", "TSLA", "NVDA", "META"]
-    crypto = ["BTC-USD", "ETH-USD", "DOGE-USD", "ADA-USD", "SOL-USD"]
-    forex = ["EURUSD=X", "GBPUSD=X", "JPY=X", "EURJPY=X", "EURGBP=X", "CNY=X"]
+    stocks: list[str] = ["AAPL", "MSFT", "AMZN", "GOOG", "TSLA", "NVDA", "META"]
+    crypto: list[str] = ["BTC-USD", "ETH-USD", "DOGE-USD", "ADA-USD", "SOL-USD"]
+    forex: list[str] = ["EURUSD=X", "GBPUSD=X", "JPY=X", "EURJPY=X", "EURGBP=X", "CNY=X"]
 
     if not os.path.exists("data"):
         print("Downloading…")
@@ -19,14 +20,15 @@ def main():
         print("Data already exists!")
 
 
-def save_data(data, type):
-    folder = f"data/{type}"
+def save_data(data: list[str], category: str) -> None:
+    folder: str = f"data/{category}"
     if not os.path.exists(folder):
         os.makedirs(folder)
 
-    today = datetime.today().strftime("%Y-%m-%d")
+    today: str = datetime.today().strftime("%Y-%m-%d")
     for item in data:
-        df = yf.download(item, end=today, progress=False)
+        # Using "today" to actually download until yesterday so the market is closed.
+        df: DataFrame = yf.download(item, end=today, progress=False)
 
         # DATA CLEANING
         # Remove "Close" column ("Adj Close" is better), but renaming
@@ -35,7 +37,7 @@ def save_data(data, type):
         df.drop(columns=["Close"], inplace=True)
         df.rename(columns={"Adj Close": "Close"}, inplace=True)
 
-        if type == "forex":  # "Volume" is always zero in forex data
+        if category == "forex":  # "Volume" is always zero in forex data
             df.drop(columns=["Volume"], inplace=True)
 
         df.to_csv(f"{folder}/{item.lower()}.csv")
