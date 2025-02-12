@@ -10,7 +10,7 @@ class CryptoEnv(TradingEnv):
         assert len(frame_bound) == 2
 
         self.frame_bound = frame_bound
-        self.trade_fee = trade_fee #fee of 0.1% per trade
+        self.trade_fee = trade_fee  # fee of 0.1% per trade
         self.current_price = None
         self.total_profit = 0
         self.open_price = None
@@ -21,10 +21,10 @@ class CryptoEnv(TradingEnv):
     def _process_data(self):
         # Extracts the 'Close' prices from the data frame.
         # Computes the price differences and combines them with the prices to form signal features.
-        prices = self.df.loc[:, 'Close'].to_numpy()
+        prices = self.df.loc[:, "Close"].to_numpy()
 
         # prices[self.frame_bound[0] - self.window_size]  # validate index
-        prices = prices[self.frame_bound[0] - self.window_size:self.frame_bound[1]]
+        prices = prices[self.frame_bound[0] - self.window_size : self.frame_bound[1]]
 
         diff = np.insert(np.diff(prices), 0, 0)
         signal_features = np.column_stack((prices, diff))
@@ -34,12 +34,8 @@ class CryptoEnv(TradingEnv):
     def _calculate_reward(self, action):
         step_reward = 0
 
-        trade = False
-        if (
-                (action == Actions.Buy.value and self._position == Positions.Short) or
-                (action == Actions.Sell.value and self._position == Positions.Long)
-        ):
-            trade = True
+        trade = ((action == Actions.Buy.value and self._position == Positions.Short)
+                 or (action == Actions.Sell.value and self._position == Positions.Long))
 
         if trade:
             current_price = self.prices[self._current_tick]
@@ -54,12 +50,8 @@ class CryptoEnv(TradingEnv):
         return step_reward
 
     def _update_profit(self, action):
-        trade = False
-        if (
-            (action == Actions.Buy.value and self._position == Positions.Short) or
-            (action == Actions.Sell.value and self._position == Positions.Long)
-        ):
-            trade = True
+        trade = ((action == Actions.Buy.value and self._position == Positions.Short)
+                 or (action == Actions.Sell.value and self._position == Positions.Long))
 
         if trade or self._truncated:
             current_price = self.prices[self._current_tick]
@@ -79,35 +71,30 @@ class CryptoEnv(TradingEnv):
             print(f"Current Price: {current_price}, Last Trade Price: {last_trade_price}")
             print(f"Shares: {shares}, Money Spent: {self._money_spent}")
 
-
     def max_possible_profit(self):
         current_tick = self._start_tick
         last_trade_tick = current_tick - 1
-        profit = 1.
+        profit = 1.0
 
         while current_tick <= self._end_tick:
-            position = None
             if self.prices[current_tick] < self.prices[current_tick - 1]:
                 while (current_tick <= self._end_tick and
                        self.prices[current_tick] < self.prices[current_tick - 1]):
                     current_tick += 1
-                position = Positions.Short
-            else:
-                while (current_tick <= self._end_tick and
-                       self.prices[current_tick] >= self.prices[current_tick - 1]):
-                    current_tick += 1
-                position = Positions.Long
 
-            if position == Positions.Long:
-                current_price = self.prices[current_tick - 1]
-                last_trade_price = self.prices[last_trade_tick]
-                shares = profit / last_trade_price
-                profit = shares * current_price * (1 - self.trade_fee)
-            elif position == Positions.Short:
                 current_price = self.prices[current_tick - 1]
                 last_trade_price = self.prices[last_trade_tick]
                 shares = profit / current_price
                 profit = shares * last_trade_price * (1 - self.trade_fee)
+            else:
+                while (current_tick <= self._end_tick and
+                       self.prices[current_tick] >= self.prices[current_tick - 1]):
+                    current_tick += 1
+
+                current_price = self.prices[current_tick - 1]
+                last_trade_price = self.prices[last_trade_tick]
+                shares = profit / last_trade_price
+                profit = shares * current_price * (1 - self.trade_fee)
 
             last_trade_tick = current_tick - 1
 
