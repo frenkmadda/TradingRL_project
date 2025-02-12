@@ -14,6 +14,7 @@ class CryptoEnv(TradingEnv):
         self.current_price = None
         self.total_profit = 0
         self.open_price = None
+        self._money_spent = 0
 
         super().__init__(df, window_size, render_mode)
 
@@ -67,9 +68,16 @@ class CryptoEnv(TradingEnv):
             if self._position == Positions.Long:
                 shares = (self._total_profit * (1 - self.trade_fee)) / last_trade_price
                 self._total_profit = (shares * (1 - self.trade_fee)) * current_price
+                self._money_spent += shares * last_trade_price
             elif self._position == Positions.Short:
                 shares = (self._total_profit * (1 - self.trade_fee)) / current_price
                 self._total_profit = (shares * (1 - self.trade_fee)) * last_trade_price
+                self._money_spent += shares * current_price
+
+            # Debugging prints
+            print(f"Action: {action}, Position: {self._position}")
+            print(f"Current Price: {current_price}, Last Trade Price: {last_trade_price}")
+            print(f"Shares: {shares}, Money Spent: {self._money_spent}")
 
 
     def max_possible_profit(self):
@@ -107,6 +115,9 @@ class CryptoEnv(TradingEnv):
 
     def get_total_profit(self):
         return self._total_profit
+
+    def get_money_spent(self):
+        return self._money_spent
 
 
 c_df = pd.read_csv("data/crypto/btc-usd.csv")
