@@ -22,11 +22,13 @@ pip3 install -r requirements.txt
 
 ## Usage
 
-1. Train the agent with historical market data:
+1. Download market data:
    ```bash
-   python3 train_agent.py
+   python3 download_data.py
    ```
-2. Evaluate the algorithm's performance:
+2. Run the Jupyter notebook:
    ```bash
-   python3 evaluate_agent.py
+   jupyter notebook
    ```
+3. Open the `trading.ipynb` file and run the cells to train the model and
+   evaluate its performance.
