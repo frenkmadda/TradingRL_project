@@ -34,8 +34,11 @@ class CryptoEnv(TradingEnv):
     def _calculate_reward(self, action):
         step_reward = 0
 
-        trade = ((action == Actions.Buy.value and self._position == Positions.Short)
-                 or (action == Actions.Sell.value and self._position == Positions.Long))
+        if action == Actions.Hold.value:
+            step_reward += -50  # Penalità per evitare inattività
+
+        trade = ((action == Actions.Buy.value and self._position == Positions.Short) or
+                 (action == Actions.Sell.value and self._position == Positions.Long))
 
         if trade:
             current_price = self.prices[self._current_tick]
@@ -50,8 +53,11 @@ class CryptoEnv(TradingEnv):
         return step_reward
 
     def _update_profit(self, action):
-        trade = ((action == Actions.Buy.value and self._position == Positions.Short)
-                 or (action == Actions.Sell.value and self._position == Positions.Long))
+        if action == Actions.Hold.value:
+            return  # Nessuna modifica al profitto se si mantiene la posizione
+
+        trade = ((action == Actions.Buy.value and self._position == Positions.Short) or
+                 (action == Actions.Sell.value and self._position == Positions.Long))
 
         if trade or self._truncated:
             current_price = self.prices[self._current_tick]
@@ -65,11 +71,6 @@ class CryptoEnv(TradingEnv):
                 shares = (self._total_profit * (1 - self.trade_fee)) / current_price
                 self._total_profit = (shares * (1 - self.trade_fee)) * last_trade_price
                 self._money_spent += shares * current_price
-
-            # Debugging prints
-            print(f"Action: {action}, Position: {self._position}")
-            print(f"Current Price: {current_price}, Last Trade Price: {last_trade_price}")
-            print(f"Shares: {shares}, Money Spent: {self._money_spent}")
 
     def max_possible_profit(self):
         current_tick = self._start_tick
