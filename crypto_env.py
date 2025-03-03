@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from gym_anytrading.envs.trading_env import TradingEnv, Actions, Positions
+from trading_env import TradingEnv, Actions, Positions
 from gymnasium.envs.registration import register
 
 
