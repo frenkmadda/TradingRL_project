@@ -3,7 +3,7 @@ import pandas as pd
 
 from trading_env import TradingEnv, Actions, Positions
 from gymnasium.envs.registration import register
-
+default_budget = 10000
 
 class CryptoEnv(TradingEnv):
     def __init__(self, df, window_size, frame_bound, trade_fee=0.001, render_mode=None):
@@ -16,7 +16,20 @@ class CryptoEnv(TradingEnv):
         self.open_price = None
         self._money_spent = 0
 
+        # Wallet
+        self.budget = default_budget
+        self._crypto_holdings = 0
+
         super().__init__(df, window_size, render_mode)
+
+    def reset(self, seed=None, options=None):
+        observation, info = super().reset(seed=seed, options=options)
+
+        # Reset wallet variables
+        self.budget = default_budget
+        self._crypto_holdings = 0
+
+        return observation, info
 
     def _process_data(self):
         # Extracts the 'Close' prices from the data frame.
@@ -35,7 +48,12 @@ class CryptoEnv(TradingEnv):
         step_reward = 0
 
         if action == Actions.Hold.value:
-            step_reward += -50  # Penalità per evitare inattività
+            hold_penalty = 10
+            if self._last_trade_tick is not None:
+                last_trade_price = self.prices[self._last_trade_tick]
+                hold_penalty = last_trade_price * 0.001  # 0.1% of last trade price
+            step_reward -= hold_penalty  # Penalità per evitare inattività
+            print("I'm holding and my reward is: ", hold_penalty)
 
         trade = ((action == Actions.Buy.value and self._position == Positions.Short) or
                  (action == Actions.Sell.value and self._position == Positions.Long))
@@ -46,7 +64,7 @@ class CryptoEnv(TradingEnv):
             price_diff = current_price - last_trade_price
 
             if self._position == Positions.Short:
-                step_reward += -price_diff
+                step_reward -= price_diff
             elif self._position == Positions.Long:
                 step_reward += price_diff
 
@@ -63,14 +81,48 @@ class CryptoEnv(TradingEnv):
             current_price = self.prices[self._current_tick]
             last_trade_price = self.prices[self._last_trade_tick]
 
-            if self._position == Positions.Long:
-                shares = (self._total_profit * (1 - self.trade_fee)) / last_trade_price
-                self._total_profit = (shares * (1 - self.trade_fee)) * current_price
-                self._money_spent += shares * last_trade_price
-            elif self._position == Positions.Short:
-                shares = (self._total_profit * (1 - self.trade_fee)) / current_price
-                self._total_profit = (shares * (1 - self.trade_fee)) * last_trade_price
+            if action == Actions.Buy.value:
+                # Calculate how much crypto we can buy with current budget
+                shares = (self.budget * (1 - self.trade_fee)) / current_price
+                self._crypto_holdings += shares
+                self.budget = 0  # All budget used for buying
                 self._money_spent += shares * current_price
+
+            elif action == Actions.Sell.value:
+                # Calculate cash received from selling all crypto
+                cash_received = self._crypto_holdings * current_price * (1 - self.trade_fee)
+                self.budget += cash_received
+                self._crypto_holdings = 0  # All crypto sold
+
+            # Update total profit as the wallet value
+            self._total_profit = self.get_wallet_value()/default_budget
+
+    def get_wallet_value(self):
+        """Returns the total value of the wallet (budget + crypto)"""
+        if self._current_tick is None:
+            return default_budget
+
+        current_price = self.prices[self._current_tick]
+        return self.budget + (self._crypto_holdings * current_price)
+
+    def get_wallet_info(self):
+        """Returns detailed information about the wallet"""
+        if self._current_tick is None:
+            return {
+                'budget': self.budget,
+                'crypto_holdings': 0,
+                'crypto_value': 0,
+                'total_value': self.budget
+            }
+
+        current_price = self.prices[self._current_tick]
+        return {
+            'budget': self.budget,
+            'crypto_holdings': self._crypto_holdings,
+            'crypto_value': self._crypto_holdings * current_price,
+            'total_value': self.budget + (self._crypto_holdings * current_price)
+        }
+
 
     def max_possible_profit(self):
         current_tick = self._start_tick
@@ -106,6 +158,12 @@ class CryptoEnv(TradingEnv):
 
     def get_money_spent(self):
         return self._money_spent
+
+    def _get_info(self):
+        info = super()._get_info()
+        wallet_info = self.get_wallet_info()
+        info.update(wallet_info)
+        return info
 
 
 c_df = pd.read_csv("data/crypto/btc-usd.csv")
