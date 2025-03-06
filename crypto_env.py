@@ -53,7 +53,7 @@ class CryptoEnv(TradingEnv):
                 last_trade_price = self.prices[self._last_trade_tick]
                 hold_penalty = last_trade_price * 0.001  # 0.1% of last trade price
             step_reward -= hold_penalty  # Penalità per evitare inattività
-            print("I'm holding and my reward is: ", hold_penalty)
+            #print("I'm holding and my reward is: ", hold_penalty)
 
         trade = ((action == Actions.Buy.value and self._position == Positions.Short) or
                  (action == Actions.Sell.value and self._position == Positions.Long))

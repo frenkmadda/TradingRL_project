@@ -3,51 +3,54 @@ from stable_baselines3.common.callbacks import BaseCallback
 from tqdm import tqdm
 
 
-def train_test_model(model, gym_env, seed=69, total_learning_timesteps=1_000_000, total_num_episodes=50):
-    obs = gym_env.reset(seed=seed)
-    vec_env = None
+def train_model(model, total_learning_timesteps=1_000_000):
+    # Addestra il modello e restituisce l'ambiente vettorializzato
+    model.learn(total_timesteps=total_learning_timesteps, callback=ProgressBar(100))
+    return model.get_env()
 
-    if model is not None:
-        model.learn(total_timesteps=total_learning_timesteps, callback=ProgressBar(100))
-        # model.learn(total_timesteps=total_learning_timesteps, progress_bar=True)
-        # ImportError: You must install tqdm and rich in order to use the progress bar callback.
-        # It is included if you install stable-baselines with the extra packages: `pip install stable-baselines3[extra]`
 
-        vec_env = model.get_env()
-        obs = vec_env.reset()
-
-    reward_over_episodes = []
-    tbar = tqdm(range(total_num_episodes))
-
-    for episode in tbar:
-        if vec_env:
-            obs = vec_env.reset()
-        else:
-            obs, info = gym_env.reset()
-
+def test_model(model, env, total_num_episodes=50):
+    rewards = []
+    # Usa la stessa interfaccia per entrambi i casi
+    for episode in tqdm(range(total_num_episodes), desc="Testing"):
+        obs = env.reset()
         total_reward = 0
         done = False
-
         while not done:
+            # Se il modello è stato addestrato, predici l'azione, altrimenti agisci casualmente
             if model is not None:
-                action, _states = model.predict(obs)
-                obs, current_reward, done, info = vec_env.step(action)
-            else:  # random
-                action = gym_env.action_space.sample()
-                obs, current_reward, terminated, truncated, info = gym_env.step(action)
+                action, _ = model.predict(obs)
+            else:
+                action = env.action_space.sample()
+
+            # Normalizza la chiamata a step() per gestire sia ambienti vettorializzati che non
+            step_result = env.step(action)
+            if len(step_result) == 4:
+                obs, reward, done, info = step_result
+            else:  # Gestione per ambienti che restituiscono terminated e truncated
+                obs, reward, terminated, truncated, info = step_result
                 done = terminated or truncated
 
-            total_reward += current_reward
+            total_reward += reward
 
-        reward_over_episodes.append(total_reward)
-        if episode % 10 == 0:
-            avg_reward = np.mean(reward_over_episodes)
-            tbar.set_description(f"Episode: {episode}, Avg. Reward: {avg_reward:.3f}")
-            tbar.update()
+        rewards.append(total_reward)
+    return rewards, info
 
-    tbar.close()
+
+def train_test_model(model, gym_env, seed=69, total_learning_timesteps=1_000_000, total_num_episodes=50, train=True):
+    # Imposta il seed
+    gym_env.reset(seed=seed)
+
+    # Se richiesto, addestra il modello e usa l'ambiente vettorializzato; altrimenti, usa gym_env
+    if train and model is not None:
+        env = train_model(model, total_learning_timesteps)
+    else:
+        env = gym_env
+
+    rewards, info = test_model(model, env, total_num_episodes)
+
     gym_env.close()
-    return reward_over_episodes, info
+    return rewards, info
 
 
 def get_results(reward_over_episodes, model_name, print_results=False):
