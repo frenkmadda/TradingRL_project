@@ -5,6 +5,7 @@ from trading_env import TradingEnv, Actions, Positions
 from gymnasium.envs.registration import register
 default_budget = 10000
 
+
 class CryptoEnv(TradingEnv):
     def __init__(self, df, window_size, frame_bound, trade_fee=0.001, render_mode=None):
         assert len(frame_bound) == 2
@@ -51,9 +52,8 @@ class CryptoEnv(TradingEnv):
             hold_penalty = 10
             if self._last_trade_tick is not None:
                 last_trade_price = self.prices[self._last_trade_tick]
-                hold_penalty = last_trade_price * 0.001  # 0.1% of last trade price
+                hold_penalty = last_trade_price * 0.0001  # 0.01% of last trade price
             step_reward -= hold_penalty  # Penalità per evitare inattività
-            #print("I'm holding and my reward is: ", hold_penalty)
 
         trade = ((action == Actions.Buy.value and self._position == Positions.Short) or
                  (action == Actions.Sell.value and self._position == Positions.Long))
@@ -62,11 +62,12 @@ class CryptoEnv(TradingEnv):
             current_price = self.prices[self._current_tick]
             last_trade_price = self.prices[self._last_trade_tick]
             price_diff = current_price - last_trade_price
+            percent_change = price_diff / last_trade_price
 
             if self._position == Positions.Short:
-                step_reward -= price_diff
+                step_reward -= percent_change
             elif self._position == Positions.Long:
-                step_reward += price_diff
+                step_reward += percent_change
 
         return step_reward
 
