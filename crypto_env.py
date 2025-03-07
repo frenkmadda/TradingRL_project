@@ -49,7 +49,7 @@ class CryptoEnv(TradingEnv):
         step_reward = 0
 
         if action == Actions.Hold.value:
-            hold_penalty = 10
+            hold_penalty = self.prices[self._last_trade_tick] * 0.001  # This should balance the penalty when holding
             if self._last_trade_tick is not None:
                 last_trade_price = self.prices[self._last_trade_tick]
                 hold_penalty = last_trade_price * 0.0001  # 0.01% of last trade price
