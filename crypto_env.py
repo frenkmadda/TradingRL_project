@@ -53,7 +53,7 @@ class CryptoEnv(TradingEnv):
             if self._last_trade_tick is not None:
                 last_trade_price = self.prices[self._last_trade_tick]
                 hold_penalty = last_trade_price * 0.0001  # 0.01% of last trade price
-            step_reward -= hold_penalty  # Penalità per evitare inattività
+            step_reward -= hold_penalty  # Penalty to avoid inactivity
 
         trade = ((action == Actions.Buy.value and self._position == Positions.Short) or
                  (action == Actions.Sell.value and self._position == Positions.Long))
@@ -68,6 +68,11 @@ class CryptoEnv(TradingEnv):
                 step_reward -= percent_change
             elif self._position == Positions.Long:
                 step_reward += percent_change
+
+        # Incorporate profit and ROI into the reward
+        profit = self.get_total_profit()
+        roi = (profit - 1) * 100
+        step_reward += profit + roi
 
         return step_reward
 
