@@ -69,7 +69,7 @@ def calculate_roi(initial_value, final_value):
     return ((final_value - initial_value) / initial_value) * 100
 
 
-def training(df, agent, total_episodes=100, initial_balance=10000, train_split=0.8, commission=0.001):
+def training(df, agent, total_episodes=100, initial_balance=10000, train_split=0.7, commission=0.001):
     train_size = int(len(df) * train_split)
     df_train = df.iloc[:train_size]
     df_test = df.iloc[train_size:]
@@ -111,22 +111,28 @@ def training(df, agent, total_episodes=100, initial_balance=10000, train_split=0
                 held = 0
                 has_position = False
 
-            # Calculate reward based on portfolio value change
-            next_portfolio_value = balance + (held * next_price)
-            reward = (next_portfolio_value - prev_portfolio_value)
+            # Calculate reward
+            profit = (balance + held * next_price) / initial_balance
+            roi = (profit - 1) * 100
 
-            # Add hold penalty
+            reward = 0
             if action == Actions.Hold:
-                # Small penalty for holding to encourage action
                 reward -= current_price * 0.0001
 
+            price_diff = next_price - current_price
+            percent_change = price_diff / current_price
+
+            if action == Actions.Buy and not has_position:
+                reward += percent_change
+            elif action == Actions.Sell and has_position:
+                reward += percent_change
+
+            reward += profit + roi
             total_reward += reward
 
             next_state = agent.discretize_state(df_train.iloc[i + 1]['price_change'],
                                                 df_train.iloc[i + 1]['volume_change'])
-
             done = (i == len(df_train) - 2)
-
             agent.update_q_table(state, action, reward, next_state, done)
 
         final_train_value = balance + (held * df_train.iloc[-1]['Close'])
@@ -152,7 +158,7 @@ def training(df, agent, total_episodes=100, initial_balance=10000, train_split=0
     plt.title('Training ROI')
     plt.xlabel('Episode')
     plt.ylabel('ROI (%)')
-    plt.savefig('training_progress.png')
+    plt.savefig('grafici/training_progress.png', dpi=300)
 
     # Analyze Q-table after training
     print("\nQ-table Analysis:")
@@ -234,9 +240,9 @@ def training(df, agent, total_episodes=100, initial_balance=10000, train_split=0
     print(f"Total Reward on test data: {total_reward:.2f}")
 
     # Print action distribution
-    print("\nAction Distribution during Evaluation:")
-    for action, count in actions_taken.items():
-        print(f"{action}: {count} times ({count / len(df_test) * 100:.2f}%)")
+    # print("\nAction Distribution during Evaluation:")
+    # for action, count in actions_taken.items():
+    #     print(f"{action}: {count} times ({count / len(df_test) * 100:.2f}%)")
 
     # Plot performance
     plt.figure(figsize=(14, 7))
@@ -256,14 +262,13 @@ def training(df, agent, total_episodes=100, initial_balance=10000, train_split=0
     plt.ylabel('Portfolio Value ($)')
     plt.legend()
     plt.grid(True)
-    plt.savefig('evaluation_performance.png')
-    plt.show()
+    plt.savefig('grafici/eval_portfolio_qtable.png')
+    # plt.show()
 
     # For comparison, plot buy and hold strategy
     buy_hold_final = initial_balance / df_test.iloc[0]['Close'] * df_test.iloc[-1]['Close']
     buy_hold_roi = calculate_roi(initial_balance, buy_hold_final)
     print(f"\nBuy & Hold Strategy ROI: {buy_hold_roi:.2f}%")
-    print(f"Strategy Outperformance: {roi - buy_hold_roi:.2f}%")
 
     return agent, roi
 
@@ -271,7 +276,7 @@ def training(df, agent, total_episodes=100, initial_balance=10000, train_split=0
 # Main execution
 if __name__ == "__main__":
     # Caricamento e preprocessamento dati
-    df = pd.read_csv("data/crypto/btc-usd.csv")
+    df = pd.read_csv("data/crypto/ada-usd.csv")
     df["price_change"] = df["Close"].pct_change() * 100
     df["volume_change"] = df["Volume"].pct_change() * 100
     df.dropna(inplace=True)
@@ -288,7 +293,7 @@ if __name__ == "__main__":
     )
 
     # Train with more episodes
-    total_episodes = 200  # More episodes for better learning
+    total_episodes = 10  # More episodes for better learning
     initial_balance = 10000
 
     agent, roi = training(df, agent, total_episodes, initial_balance)
