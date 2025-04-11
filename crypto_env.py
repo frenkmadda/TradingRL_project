@@ -165,6 +165,11 @@ class CryptoEnv(TradingEnv):
     def get_money_spent(self):
         return self._money_spent
 
+    def get_current_price(self):
+        if self._current_tick is None:
+            return None
+        return self.prices[self._current_tick]
+
     def _get_info(self):
         info = super()._get_info()
         wallet_info = self.get_wallet_info()
@@ -172,9 +177,9 @@ class CryptoEnv(TradingEnv):
         return info
 
 
-c_df = pd.read_csv("data/crypto/btc-usd.csv")
-register(
-    id="crypto-v0",
-    entry_point="crypto_env:CryptoEnv",
-    kwargs={"df": c_df, "window_size": 30, "frame_bound": (30, len(c_df))},
-)
+# c_df = pd.read_csv("data/crypto/btc-usd.csv")
+# register(
+#     id="crypto-v0",
+#     entry_point="crypto_env:CryptoEnv",
+#     kwargs={"df": c_df, "window_size": 30, "frame_bound": (30, len(c_df))},
+# )

@@ -21,6 +21,7 @@ def test_model(model, env, total_num_episodes=50):
         portfolio = []
         buys = []
         sells = []
+        holdings = []
 
         while not done:
             if model is not None:
@@ -47,11 +48,20 @@ def test_model(model, env, total_num_episodes=50):
             if wallet_value is not None:
                 portfolio.append(wallet_value)
 
+            current_price = env.get_current_price()
+
+            if isinstance(current_price, list):
+                current_price = current_price[0]
 
             if action == 1:  # Buy
                 buys.append(len(portfolio) - 1)
+                print(f"BUY at ${current_price:.2f}, Portfolio Value: ${wallet_value:.2f}")
             elif action == 0:  # Sell
                 sells.append(len(portfolio) - 1)
+                print(f"SELL at ${current_price:.2f}, Portfolio Value: ${wallet_value:.2f}")
+            elif action == 2:  # Hold
+                holdings.append(len(portfolio) - 1)
+                print(f"HOLD at ${current_price:.2f}, Portfolio Value: ${wallet_value:.2f}")
 
         rewards.append(total_reward)
         portfolio_histories.append(portfolio)
@@ -59,7 +69,7 @@ def test_model(model, env, total_num_episodes=50):
         if action == 1 or action == 0:
             buy_sell_markers.append((buys, sells))
 
-    return rewards, info, portfolio_histories, buy_sell_markers
+    return rewards, info, portfolio_histories, buys, sells, holdings
 
 
 
@@ -67,18 +77,19 @@ def test_model(model, env, total_num_episodes=50):
 def train_test_model(model, train_env, test_env, seed=69, total_learning_timesteps=1_000_000, total_num_episodes=50, train=True):
     # Imposta il seed
     train_env.reset(seed=seed)
+    train_env = train_model(model, total_learning_timesteps)
 
     # Se richiesto, addestra il modello e usa l'ambiente vettorializzato; altrimenti, usa gym_env
-    if train and model is not None:
-        train_env = train_model(model, total_learning_timesteps)
-    else:
-        env = train_env
+    # if train and model is not None:
+    #     train_env = train_model(model, total_learning_timesteps)
+    # else:
+    #     env = train_env
 
-    rewards, info, portfolio_histories, buy_sell_markers = test_model(model, test_env, total_num_episodes)
+    rewards, info, portfolio_histories, buys, sells, holdings = test_model(model, test_env, total_num_episodes)
 
     train_env.close()
     test_env.close()
-    return rewards, info, portfolio_histories, buy_sell_markers
+    return rewards, info, portfolio_histories, buys, sells, holdings
 
 
 

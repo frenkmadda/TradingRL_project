@@ -43,18 +43,20 @@ def plot_rewards(rewards, model_name, total_num_episodes):
     plt.close()
 
 
-def plot_portfolio_during_evaluation(portfolio_values, buy_idx, sell_idx, model_name, roi):
+def plot_portfolio_during_evaluation(portfolio_values, buy_idx, sell_idx, hold_idx, model_name, roi):
     plt.figure(figsize=(14, 7))
     plt.plot(portfolio_values, label='Portfolio Value')
 
     for b in buy_idx:
         plt.scatter(b, portfolio_values[b], color='green', marker='^', s=100, label='Buy' if b == buy_idx[0] else "")
     for s in sell_idx:
-        if s > 0 and portfolio_values[s] < portfolio_values[s - 1]:  # Verifica se c'è effettivamente una vendita
-            plt.scatter(s, portfolio_values[s], color='red', marker='v', s=100, label='Sell' if s == sell_idx[0] else "")
+        # if s > 0 and portfolio_values[s] < portfolio_values[s - 1]:  # Verifica se c'è effettivamente una vendita
+        plt.scatter(s, portfolio_values[s], color='red', marker='v', s=100, label='Sell' if s == sell_idx[0] else "")
+    for h in hold_idx:
+        plt.scatter(h, portfolio_values[h], color='blue', marker='o', s=100, label='Hold' if h == hold_idx[0] else "")
 
     plt.title(f'Portfolio Value During Evaluation ({model_name}) (ROI: {roi:.2f}%)')
-    plt.xlabel('Step')
+    plt.xlabel('Trading Days')
     plt.ylabel('Portfolio Value ($)')
     plt.legend()
     plt.grid(True, which='both', linestyle='-', linewidth=0.5)
@@ -109,7 +111,7 @@ def train_and_get_rewards(model_name, train_env, test_env, seed, total_learning_
     else:
         model = None
 
-    rewards, info, portfolio_histories, buy_sell_markers = utils.train_test_model(
+    rewards, info, portfolio_histories, buys, sells, holdings = utils.train_test_model(
         model, train_env, test_env, seed, total_learning_timesteps, total_num_episodes)
 
     # Calcolo ROI
@@ -124,8 +126,11 @@ def train_and_get_rewards(model_name, train_env, test_env, seed, total_learning_
     plot_rewards(rewards, model_name, total_num_episodes)
     plot_portfolio_during_evaluation(
         portfolio_values=portfolio_histories[0],
-        buy_idx=buy_sell_markers[0][0],
-        sell_idx=buy_sell_markers[0][1],
+        buy_idx=buys,
+        sell_idx=sells,
+        hold_idx=holdings,
+        # buy_idx=buy_sell_markers[0][0],
+        # sell_idx=buy_sell_markers[0][1],
         model_name=model_name,
         roi=roi
     )
@@ -144,15 +149,15 @@ if __name__ == "__main__":
     df.head()
 
     # split the dataset into train and test
-    train_size = int(len(df) * 0.7)
+    train_size = int(len(df) * 0.85)
     test_size = len(df) - train_size
     train_df = df[:train_size]
     test_df = df[train_size:]
 
 
     seed = 69  # Nice
-    total_num_episodes = 10
-    total_learning_timesteps = 1_000
+    total_num_episodes = 200
+    total_learning_timesteps = 1_000_000
 
     window_size = 15
     end_index = len(df)

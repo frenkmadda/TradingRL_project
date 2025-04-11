@@ -69,7 +69,7 @@ def calculate_roi(initial_value, final_value):
     return ((final_value - initial_value) / initial_value) * 100
 
 
-def training(df, agent, total_episodes=100, initial_balance=10000, train_split=0.7, commission=0.001):
+def training(df, agent, total_episodes=100, initial_balance=10000, train_split=0.9, commission=0.001):
     train_size = int(len(df) * train_split)
     df_train = df.iloc[:train_size]
     df_test = df.iloc[train_size:]
@@ -186,6 +186,7 @@ def training(df, agent, total_episodes=100, initial_balance=10000, train_split=0
 
     buy_dates = []
     sell_dates = []
+    holdings = []
 
     for i in range(len(df_test) - 1):
         state = agent.discretize_state(df_test.iloc[i]['price_change'], df_test.iloc[i]['volume_change'])
@@ -223,6 +224,10 @@ def training(df, agent, total_episodes=100, initial_balance=10000, train_split=0
             has_position = False
             sell_dates.append(i)
             print(f"SELL at ${current_price:.2f}, Portfolio Value: ${current_portfolio:.2f}")
+        elif action == Actions.Hold:
+            holdings.append(i)
+            print(f"HOLD at ${current_price:.2f}, Portfolio Value: ${current_portfolio:.2f}")
+
 
         # Calculate reward (for tracking purposes only)
         next_portfolio_value = balance + (held * next_price)
@@ -256,6 +261,10 @@ def training(df, agent, total_episodes=100, initial_balance=10000, train_split=0
     for sell_idx in sell_dates:
         plt.scatter(sell_idx, eval_portfolio_values[sell_idx], color='red', marker='v', s=100,
                     label='Sell' if sell_idx == sell_dates[0] else "")
+
+    for holding in holdings:
+        plt.scatter(holding, eval_portfolio_values[holding], color='blue', marker='o', s=30,
+                    label='Hold' if holding == holdings[0] else "")
 
     plt.title(f'Portfolio Value During Evaluation (ROI: {roi:.2f}%)')
     plt.xlabel('Trading Day')
@@ -293,7 +302,7 @@ if __name__ == "__main__":
     )
 
     # Train with more episodes
-    total_episodes = 10  # More episodes for better learning
+    total_episodes = 200  # More episodes for better learning
     initial_balance = 10000
 
     agent, roi = training(df, agent, total_episodes, initial_balance)
