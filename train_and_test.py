@@ -2,6 +2,15 @@ import utils
 import matplotlib.pyplot as plt
 import pandas as pd
 from stable_baselines3 import A2C, PPO, DQN
+from crypto_env import CryptoEnv
+import gym_anytrading
+import gymnasium as gym
+import quantstats as qs
+
+from stable_baselines3 import A2C, PPO, DQN
+import warnings
+
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 
 def plot_rewards(rewards, model_name, total_num_episodes):
@@ -28,10 +37,38 @@ def plot_rewards(rewards, model_name, total_num_episodes):
     plt.ylabel("Reward")
     plt.title(f"Rewards per Episode for {model_name}")
     plt.legend()
-    plt.show()
+    # plt.show()
+    filename = f'grafici/rewards_{model_name.lower()}.png'
+    plt.savefig(filename)
+    plt.close()
 
 
-def train_and_get_rewards(model_name,  env, seed, total_learning_timesteps, total_num_episodes):
+def plot_portfolio_during_evaluation(portfolio_values, buy_idx, sell_idx, model_name, roi):
+    plt.figure(figsize=(14, 7))
+    plt.plot(portfolio_values, label='Portfolio Value')
+
+    for b in buy_idx:
+        plt.scatter(b, portfolio_values[b], color='green', marker='^', s=100, label='Buy' if b == buy_idx[0] else "")
+    for s in sell_idx:
+        plt.scatter(s, portfolio_values[s], color='red', marker='v', s=100, label='Sell' if s == sell_idx[0] else "")
+
+    plt.title(f'Portfolio Value During Evaluation ({model_name}) (ROI: {roi:.2f}%)')
+    plt.xlabel('Step')
+    plt.ylabel('Portfolio Value ($)')
+    plt.legend()
+    plt.grid(True, which='both', linestyle='-', linewidth=0.5)
+    ax = plt.gca()
+    for spine in ax.spines.values():
+        spine.set_visible(True)
+        spine.set_linewidth(1.0)
+
+    filename = f'grafici/eval_portfolio_{model_name.lower()}.png'
+    plt.savefig(filename, dpi=300)
+    print(f"[Salvato grafico in {filename}]")
+    plt.close()
+
+
+def train_and_get_rewards(model_name, train_env, test_env, seed, total_learning_timesteps, total_num_episodes):
     '''
     Function used to train the models
     :param model_name: The model chosen between A2C, PPO and DQN
@@ -44,9 +81,9 @@ def train_and_get_rewards(model_name,  env, seed, total_learning_timesteps, tota
     print(f"Training {model_name} model…")
 
     if model_name == "PPO":
-        model = PPO("MlpPolicy", env)
+        model = PPO("MlpPolicy", train_env)
     elif model_name == "DQN":
-        model = DQN("MlpPolicy", env,
+        model = DQN("MlpPolicy", train_env,
                     learning_rate=0.0005,
                     buffer_size=50000,
                     learning_starts=1000,
@@ -60,7 +97,7 @@ def train_and_get_rewards(model_name,  env, seed, total_learning_timesteps, tota
                     verbose=0,
                     device="cuda")
     elif model_name == "A2C":
-        model = A2C("MlpPolicy", env,
+        model = A2C("MlpPolicy", train_env,
                     learning_rate=0.0003,
                     gamma=0.95,
                     n_steps=5,
@@ -71,18 +108,67 @@ def train_and_get_rewards(model_name,  env, seed, total_learning_timesteps, tota
     else:
         model = None
 
-    rewards, info = utils.train_test_model(model, env, seed, total_learning_timesteps, total_num_episodes)
-    _, _, avg_res = utils.get_results(rewards, model_name, print_results=True)
+    rewards, info, portfolio_histories, buy_sell_markers = utils.train_test_model(
+        model, train_env, test_env, seed, total_learning_timesteps, total_num_episodes)
 
-    profit = info[0]["total_profit"]
-    # money_spent = env.unwrapped.get_money_spent()
-    # money_left = env.unwrapped.get_wallet_value()
-    # roi = 100 * (money_left - money_spent) / money_spent
+    # Calcolo ROI
+    if isinstance(info, list):
+        profit = info[0]["total_profit"]
+    else:
+        profit = info["total_profit"]
+
     roi = (profit - 1) * 100
 
-    print(f"Total Profit = {profit:.8f}")
-    # print(f"Total Money Spent = {money_spent:.2f}")
-    # print(f"Money Left = {money_left:.2f}")
-    print(f"ROI = {roi:.2f}%")
+    # Plot e salvataggio
     plot_rewards(rewards, model_name, total_num_episodes)
+    plot_portfolio_during_evaluation(
+        portfolio_values=portfolio_histories[0],
+        buy_idx=buy_sell_markers[0][0],
+        sell_idx=buy_sell_markers[0][1],
+        model_name=model_name,
+        roi=roi
+    )
 
+
+if __name__ == "__main__":
+    dataset_path = "data/crypto/ada-usd.csv"
+    dataset_type = "crypto-v0"  # "stocks-v0", "forex-v0", "crypto-v0"
+
+    df = pd.read_csv(
+        dataset_path,
+        header=0,
+        parse_dates=["Date"],
+        index_col="Date",
+    )
+    df.head()
+
+    # split the dataset into train and test
+    train_size = int(len(df) * 0.7)
+    test_size = len(df) - train_size
+    train_df = df[:train_size]
+    test_df = df[train_size:]
+
+
+    seed = 69  # Nice
+    total_num_episodes = 10
+    total_learning_timesteps = 1_000
+
+    window_size = 15
+    end_index = len(df)
+
+    train_env = CryptoEnv(
+        df=train_df,
+        window_size=window_size,
+        frame_bound=(window_size, end_index),
+    )
+
+    test_env = CryptoEnv(
+        df=test_df,
+        window_size=window_size,
+        frame_bound=(window_size, end_index),
+    )
+
+    # Using the function in train_and_test.py
+    train_and_get_rewards("DQN", train_env, test_env, seed, total_learning_timesteps, total_num_episodes)
+    train_and_get_rewards("PPO", train_env, test_env, seed, total_learning_timesteps, total_num_episodes)
+    train_and_get_rewards("A2C", train_env, test_env, seed, total_learning_timesteps, total_num_episodes)

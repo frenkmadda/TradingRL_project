@@ -11,46 +11,75 @@ def train_model(model, total_learning_timesteps=1_000_000):
 
 def test_model(model, env, total_num_episodes=50):
     rewards = []
-    # Usa la stessa interfaccia per entrambi i casi
+    portfolio_histories = []
+    buy_sell_markers = []
+
     for episode in tqdm(range(total_num_episodes), desc="Testing"):
-        obs = env.reset()
+        obs, _ = env.reset()
         total_reward = 0
         done = False
+        portfolio = []
+        buys = []
+        sells = []
+
         while not done:
-            # Se il modello è stato addestrato, predici l'azione, altrimenti agisci casualmente
             if model is not None:
                 action, _ = model.predict(obs)
             else:
                 action = env.action_space.sample()
 
-            # Normalizza la chiamata a step() per gestire sia ambienti vettorializzati che non
             step_result = env.step(action)
             if len(step_result) == 4:
                 obs, reward, done, info = step_result
-            else:  # Gestione per ambienti che restituiscono terminated e truncated
+            else:
                 obs, reward, terminated, truncated, info = step_result
                 done = terminated or truncated
 
             total_reward += reward
 
+            # Recupero del valore del portafoglio da info
+            wallet_value = None
+            if isinstance(info, list) and len(info) > 0:
+                wallet_value = info[0].get("total_value", None)
+            elif isinstance(info, dict):
+                wallet_value = info.get("total_value", None)
+
+            if wallet_value is not None:
+                portfolio.append(wallet_value)
+
+
+            if action == 1:  # Buy
+                buys.append(len(portfolio) - 1)
+            elif action == 0:  # Sell
+                sells.append(len(portfolio) - 1)
+
         rewards.append(total_reward)
-    return rewards, info
+        portfolio_histories.append(portfolio)
+
+        if action == 1 or action == 0:
+            buy_sell_markers.append((buys, sells))
+
+    return rewards, info, portfolio_histories, buy_sell_markers
 
 
-def train_test_model(model, gym_env, seed=69, total_learning_timesteps=1_000_000, total_num_episodes=50, train=True):
+
+
+def train_test_model(model, train_env, test_env, seed=69, total_learning_timesteps=1_000_000, total_num_episodes=50, train=True):
     # Imposta il seed
-    gym_env.reset(seed=seed)
+    train_env.reset(seed=seed)
 
     # Se richiesto, addestra il modello e usa l'ambiente vettorializzato; altrimenti, usa gym_env
     if train and model is not None:
-        env = train_model(model, total_learning_timesteps)
+        train_env = train_model(model, total_learning_timesteps)
     else:
-        env = gym_env
+        env = train_env
 
-    rewards, info = test_model(model, env, total_num_episodes)
+    rewards, info, portfolio_histories, buy_sell_markers = test_model(model, test_env, total_num_episodes)
 
-    gym_env.close()
-    return rewards, info
+    train_env.close()
+    test_env.close()
+    return rewards, info, portfolio_histories, buy_sell_markers
+
 
 
 def get_results(reward_over_episodes, model_name, print_results=False):
