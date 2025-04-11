@@ -256,10 +256,10 @@ def training(df, agent, total_episodes=100, initial_balance=10000, train_split=0
     # Plot buy/sell markers
     test_prices = df_test['Close'].values[:len(eval_portfolio_values)]
     for buy_idx in buy_dates:
-        plt.scatter(buy_idx, eval_portfolio_values[buy_idx], color='green', marker='^', s=100,
+        plt.scatter(buy_idx, eval_portfolio_values[buy_idx], color='green', marker='^', s=80,
                     label='Buy' if buy_idx == buy_dates[0] else "")
     for sell_idx in sell_dates:
-        plt.scatter(sell_idx, eval_portfolio_values[sell_idx], color='red', marker='v', s=100,
+        plt.scatter(sell_idx, eval_portfolio_values[sell_idx], color='red', marker='v', s=80,
                     label='Sell' if sell_idx == sell_dates[0] else "")
 
     for holding in holdings:
