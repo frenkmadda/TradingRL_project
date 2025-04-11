@@ -50,7 +50,8 @@ def plot_portfolio_during_evaluation(portfolio_values, buy_idx, sell_idx, model_
     for b in buy_idx:
         plt.scatter(b, portfolio_values[b], color='green', marker='^', s=100, label='Buy' if b == buy_idx[0] else "")
     for s in sell_idx:
-        plt.scatter(s, portfolio_values[s], color='red', marker='v', s=100, label='Sell' if s == sell_idx[0] else "")
+        if s > 0 and portfolio_values[s] < portfolio_values[s - 1]:  # Verifica se c'è effettivamente una vendita
+            plt.scatter(s, portfolio_values[s], color='red', marker='v', s=100, label='Sell' if s == sell_idx[0] else "")
 
     plt.title(f'Portfolio Value During Evaluation ({model_name}) (ROI: {roi:.2f}%)')
     plt.xlabel('Step')
