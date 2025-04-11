@@ -49,11 +49,11 @@ class CryptoEnv(TradingEnv):
         step_reward = 0
 
         if action == Actions.Hold.value:
-            hold_penalty = self.prices[self._last_trade_tick] * 0.001  # This should balance the penalty when holding
+            hold_penalty = self.prices[self._last_trade_tick] * 0.001  # Penalità per inattività
             if self._last_trade_tick is not None:
                 last_trade_price = self.prices[self._last_trade_tick]
-                hold_penalty = last_trade_price * 0.0001  # 0.01% of last trade price
-            step_reward -= hold_penalty  # Penalty to avoid inactivity
+                hold_penalty = last_trade_price * 0.0001  # 0.01% del prezzo dell'ultimo trade
+            step_reward -= hold_penalty
 
         trade = ((action == Actions.Buy.value and self._position == Positions.Short) or
                  (action == Actions.Sell.value and self._position == Positions.Long))
@@ -69,12 +69,17 @@ class CryptoEnv(TradingEnv):
             elif self._position == Positions.Long:
                 step_reward += percent_change
 
-        # Incorporate profit and ROI into the reward
+            # Ricompensa positiva per una vendita con profitto
+            if action == Actions.Sell.value and percent_change > 0:
+                step_reward += percent_change * 10  # Ricompensa proporzionale al guadagno
+
+        # Incorporare profitto e ROI nella ricompensa
         profit = self.get_total_profit()
         roi = (profit - 1) * 100
         step_reward += profit + roi
 
         return step_reward
+
 
     def _update_profit(self, action):
         if action == Actions.Hold.value:
