@@ -170,6 +170,10 @@ class CryptoEnv(TradingEnv):
             return None
         return self.prices[self._current_tick]
 
+    def get_budget(self):
+        return self.budget
+
+
     def _get_info(self):
         info = super()._get_info()
         wallet_info = self.get_wallet_info()

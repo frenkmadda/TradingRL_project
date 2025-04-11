@@ -53,7 +53,7 @@ def plot_portfolio_during_evaluation(portfolio_values, buy_idx, sell_idx, hold_i
         # if s > 0 and portfolio_values[s] < portfolio_values[s - 1]:  # Verifica se c'è effettivamente una vendita
         plt.scatter(s, portfolio_values[s], color='red', marker='v', s=100, label='Sell' if s == sell_idx[0] else "")
     for h in hold_idx:
-        plt.scatter(h, portfolio_values[h], color='blue', marker='o', s=100, label='Hold' if h == hold_idx[0] else "")
+        plt.scatter(h, portfolio_values[h], color='blue', marker='o', s=30, label='Hold' if h == hold_idx[0] else "")
 
     plt.title(f'Portfolio Value During Evaluation ({model_name}) (ROI: {roi:.2f}%)')
     plt.xlabel('Trading Days')
@@ -156,8 +156,8 @@ if __name__ == "__main__":
 
 
     seed = 69  # Nice
-    total_num_episodes = 200
-    total_learning_timesteps = 1_000_000
+    total_num_episodes = 100
+    total_learning_timesteps = 1_000
 
     window_size = 15
     end_index = len(df)

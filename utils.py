@@ -53,15 +53,19 @@ def test_model(model, env, total_num_episodes=50):
             if isinstance(current_price, list):
                 current_price = current_price[0]
 
+            budget = env.get_budget()
+            if isinstance(budget, list):
+                budget = budget[0]
+
             if action == 1:  # Buy
                 buys.append(len(portfolio) - 1)
-                print(f"BUY at ${current_price:.2f}, Portfolio Value: ${wallet_value:.2f}")
+                print(f"BUY at ${current_price:.2f}, Portfolio Value: ${wallet_value:.2f}, Budget: ${budget:.2f}")
             elif action == 0:  # Sell
                 sells.append(len(portfolio) - 1)
-                print(f"SELL at ${current_price:.2f}, Portfolio Value: ${wallet_value:.2f}")
+                print(f"SELL at ${current_price:.2f}, Portfolio Value: ${wallet_value:.2f}, Budget: ${budget:.2f}")
             elif action == 2:  # Hold
                 holdings.append(len(portfolio) - 1)
-                print(f"HOLD at ${current_price:.2f}, Portfolio Value: ${wallet_value:.2f}")
+                print(f"HOLD at ${current_price:.2f}, Portfolio Value: ${wallet_value:.2f}, Budget: ${budget:.2f}")
 
         rewards.append(total_reward)
         portfolio_histories.append(portfolio)
