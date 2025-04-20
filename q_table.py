@@ -69,7 +69,7 @@ def calculate_roi(initial_value, final_value):
     return ((final_value - initial_value) / initial_value) * 100
 
 
-def training(df, agent, total_episodes=100, initial_balance=10000, train_split=0.9, commission=0.001):
+def training(df, agent, total_episodes=100, initial_balance=10000, train_split=0.8, commission=0.001):
     train_size = int(len(df) * train_split)
     df_train = df.iloc[:train_size]
     df_test = df.iloc[train_size:]
@@ -141,24 +141,30 @@ def training(df, agent, total_episodes=100, initial_balance=10000, train_split=0
         all_rewards.append(total_reward)
         training_roi.append(roi_train)
 
-        if episode % 10 == 0 or episode == total_episodes - 1:
-            print(
-                f"Episode {episode + 1}: Reward = {total_reward:.2f}, ROI = {roi_train:.2f}%, Portfolio Value = {final_train_value:.2f}")
+        print(f"Episode {episode}: Reward = {total_reward:.2f}, ROI = {roi_train:.2f}%, Portfolio Value = {final_train_value:.2f}")
+
+        # if episode % 10 == 0 or episode == total_episodes - 1:
+        #     print(
+        #         f"Episode {episode + 1}: Reward = {total_reward:.2f}, ROI = {roi_train:.2f}%, Portfolio Value = {final_train_value:.2f}")
 
     # Plot training progress
     plt.figure(figsize=(12, 6))
-    plt.subplot(1, 2, 1)
-    plt.plot(all_rewards)
-    plt.title('Training Rewards')
+    plt.grid(True, linestyle='-', linewidth=0.4)
+    # Change background color
+    plt.gca().set_facecolor('#ecf0f1')
+    plt.gca().set_alpha(0.5)
+    # plt.subplot(1, 2, 1)
+    plt.plot(all_rewards, color='royalblue', linewidth=1)
+    plt.title('Training Rewards - Q-Table')
     plt.xlabel('Episode')
     plt.ylabel('Total Reward')
 
-    plt.subplot(1, 2, 2)
-    plt.plot(training_roi)
-    plt.title('Training ROI')
-    plt.xlabel('Episode')
-    plt.ylabel('ROI (%)')
-    plt.savefig('grafici/training_progress.png', dpi=300)
+    # plt.subplot(1, 2, 2)
+    # plt.plot(training_roi)
+    # plt.title('Training ROI')
+    # plt.xlabel('Episode')
+    # plt.ylabel('ROI (%)')
+    plt.savefig('grafici/training_progress_qtable.png', dpi=300)
 
     # Analyze Q-table after training
     print("\nQ-table Analysis:")
@@ -251,27 +257,38 @@ def training(df, agent, total_episodes=100, initial_balance=10000, train_split=0
 
     # Plot performance
     plt.figure(figsize=(14, 7))
-    plt.plot(eval_portfolio_values, label='Portfolio Value')
+    plt.plot(eval_portfolio_values, label='Portfolio Value', color='#8e44ad', linewidth=1)
+
+    # Change background color
+    plt.gca().set_facecolor('#ecf0f1')
+    plt.gca().set_alpha(0.5)
 
     # Plot buy/sell markers
-    test_prices = df_test['Close'].values[:len(eval_portfolio_values)]
+    # test_prices = df_test['Close'].values[:len(eval_portfolio_values)]
     for buy_idx in buy_dates:
         plt.scatter(buy_idx, eval_portfolio_values[buy_idx], color='green', marker='^', s=80,
                     label='Buy' if buy_idx == buy_dates[0] else "")
     for sell_idx in sell_dates:
         plt.scatter(sell_idx, eval_portfolio_values[sell_idx], color='red', marker='v', s=80,
                     label='Sell' if sell_idx == sell_dates[0] else "")
-
     for holding in holdings:
-        plt.scatter(holding, eval_portfolio_values[holding], color='blue', marker='o', s=30,
+        plt.scatter(holding, eval_portfolio_values[holding], color='#3498db', marker='o', s=30,
                     label='Hold' if holding == holdings[0] else "")
 
-    plt.title(f'Portfolio Value During Evaluation (ROI: {roi:.2f}%)')
-    plt.xlabel('Trading Day')
-    plt.ylabel('Portfolio Value ($)')
+    roi_text = f"ROI: {roi:.2f}%"
+    plt.text(0.5, 0.95, roi_text, fontsize=14, ha='center', va='top', transform=plt.gca().transAxes,
+             bbox=dict(facecolor='white', alpha=0.5, edgecolor='black', boxstyle='round,pad=0.3'))
+
+    plt.title('Portfolio Value During Evaluation - Q-Table Agent', fontsize=16)
+    plt.xlabel('Trading Day', fontsize=14)
+    plt.ylabel('Portfolio Value ($)', fontsize=14)
     plt.legend()
-    plt.grid(True)
-    plt.savefig('grafici/eval_portfolio_qtable.png')
+    plt.grid(True, which='both', linestyle='-', linewidth=0.6)
+    ax = plt.gca()
+    for spine in ax.spines.values():
+        spine.set_visible(True)
+        spine.set_linewidth(1.0)
+    plt.savefig('grafici/eval_portfolio_qtable.png', dpi=300)
     # plt.show()
 
     # For comparison, plot buy and hold strategy
@@ -285,7 +302,7 @@ def training(df, agent, total_episodes=100, initial_balance=10000, train_split=0
 # Main execution
 if __name__ == "__main__":
     # Caricamento e preprocessamento dati
-    df = pd.read_csv("data/crypto/ada-usd.csv")
+    df = pd.read_csv("data/crypto/btc-usd.csv")
     df["price_change"] = df["Close"].pct_change() * 100
     df["volume_change"] = df["Volume"].pct_change() * 100
     df.dropna(inplace=True)
@@ -303,6 +320,6 @@ if __name__ == "__main__":
 
     # Train with more episodes
     total_episodes = 200  # More episodes for better learning
-    initial_balance = 10000
+    initial_balance = 10_000
 
     agent, roi = training(df, agent, total_episodes, initial_balance)
