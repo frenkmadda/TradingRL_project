@@ -121,6 +121,66 @@ def plot_portfolio_during_evaluation(portfolio_values, buy_idx, sell_idx, hold_i
     print(f"[Salvato grafico in {filename}]")
     # plt.close()
 
+def plot_price(price, model_name):
+    plt.figure(figsize=(14, 7))
+    plt.plot(price, label='Price', color='#8e44ad', linewidth=1)
+
+    # change background color
+    plt.gca().set_facecolor('#ecf0f1')
+    plt.gca().set_alpha(0.5)
+
+    plt.title(f"Price during Evaluation - {model_name}", fontsize=16)
+    plt.xlabel('Trading Days', fontsize=14)
+    plt.ylabel('Price ($)', fontsize=14)
+    plt.legend()
+    plt.grid(True, which='both', linestyle='-', linewidth=0.6)
+    ax = plt.gca()
+    for spine in ax.spines.values():
+        spine.set_edgecolor('black')
+        spine.set_linewidth(1)
+
+    filename = f'grafici/eval_price_{model_name.lower()}.png'
+    plt.savefig(filename, dpi=300)
+    print(f"[Salvato grafico in {filename}]")
+
+
+def plot_action_price(price, buy_idx, sell_idx, hold_idx, model_name, roi):
+    plt.figure(figsize=(14, 7))
+    plt.plot(price, label='Price', color='#8e44ad', linewidth=1)
+
+    # change background color
+    plt.gca().set_facecolor('#ecf0f1')
+    plt.gca().set_alpha(0.5)
+
+    for b in buy_idx:
+        plt.scatter(b, price[b], color='green', marker='^', s=80,
+                    label='Buy' if b == buy_idx[0] else "")
+    for s in sell_idx:
+        # if s > 0 and portfolio_values[s] < portfolio_values[s - 1]:  # Verifica se c'è effettivamente una vendita
+        plt.scatter(s, price[s], color='red', marker='v', s=80,
+                    label='Sell' if s == sell_idx[0] else "")
+    for h in hold_idx:
+        plt.scatter(h, price[h], color='#3498db', marker='o', s=30,
+                    label='Hold' if h == hold_idx[0] else "")
+
+    roi_text = f"ROI: {roi:.2f}%"
+    plt.text(0.5, 0.95, roi_text, fontsize=14, ha='center', va='top', transform=plt.gca().transAxes,
+                bbox=dict(facecolor='white', alpha=0.5, edgecolor='black', boxstyle='round,pad=0.3'))
+
+    plt.title(f"Price during Evaluation - {model_name}", fontsize=16)
+    plt.xlabel('Trading Days', fontsize=14)
+    plt.ylabel('Price ($)', fontsize=14)
+    plt.legend()
+    plt.grid(True, which='both', linestyle='-', linewidth=0.6)
+    ax = plt.gca()
+    for spine in ax.spines.values():
+        spine.set_edgecolor('black')
+        spine.set_linewidth(1)
+
+    filename = f'grafici/eval_price_action_{model_name.lower()}.png'
+    plt.savefig(filename, dpi=300)
+    print(f"[Salvato grafico in {filename}]")
+
 
 def train_and_get_rewards(model_name, train_env, test_env, seed, total_learning_timesteps, total_num_episodes):
     '''
@@ -162,7 +222,7 @@ def train_and_get_rewards(model_name, train_env, test_env, seed, total_learning_
     else:
         model = None
 
-    rewards, info, portfolio_histories, buys, sells, holdings = utils.train_test_model(
+    rewards, info, portfolio_histories, buys, sells, holdings, price = utils.train_test_model(
         model, train_env, test_env, seed, total_learning_timesteps, total_num_episodes)
 
     # Calcolo ROI
@@ -186,11 +246,14 @@ def train_and_get_rewards(model_name, train_env, test_env, seed, total_learning_
         roi=roi
     )
 
+    plot_price(price, model_name)
+    plot_action_price(price, buys, sells, holdings, model_name, roi)
+
     return rewards
 
 
 if __name__ == "__main__":
-    dataset_path = "data/crypto/btc-usd.csv"
+    dataset_path = "data/crypto/ada-usd.csv"
     dataset_type = "crypto-v0"  # "stocks-v0", "forex-v0", "crypto-v0"
 
     df = pd.read_csv(
@@ -207,8 +270,7 @@ if __name__ == "__main__":
     train_df = df[:train_size]
     test_df = df[train_size:]
 
-
-    seed = 42  # Nice
+    seed = 69  # Nice
     total_num_episodes = 200
     total_learning_timesteps = 100_000
 
