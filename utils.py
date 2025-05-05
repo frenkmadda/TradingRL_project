@@ -22,6 +22,7 @@ def test_model(model, env, total_num_episodes=50):
         buys = []
         sells = []
         holdings = []
+        price = []
 
         while not done:
             if model is not None:
@@ -52,6 +53,7 @@ def test_model(model, env, total_num_episodes=50):
 
             if isinstance(current_price, list):
                 current_price = current_price[0]
+            price.append(float(current_price))
 
             budget = env.get_budget()
             if isinstance(budget, list):
@@ -73,9 +75,7 @@ def test_model(model, env, total_num_episodes=50):
         if action == 1 or action == 0:
             buy_sell_markers.append((buys, sells))
 
-    return rewards, info, portfolio_histories, buys, sells, holdings
-
-
+    return rewards, info, portfolio_histories, buys, sells, holdings, price
 
 
 def train_test_model(model, train_env, test_env, seed=69, total_learning_timesteps=1_000_000, total_num_episodes=50, train=True):
@@ -89,12 +89,11 @@ def train_test_model(model, train_env, test_env, seed=69, total_learning_timeste
     # else:
     #     env = train_env
 
-    rewards, info, portfolio_histories, buys, sells, holdings = test_model(model, test_env, total_num_episodes)
+    rewards, info, portfolio_histories, buys, sells, holdings, price = test_model(model, test_env, total_num_episodes)
 
     train_env.close()
     test_env.close()
-    return rewards, info, portfolio_histories, buys, sells, holdings
-
+    return rewards, info, portfolio_histories, buys, sells, holdings, price
 
 
 def get_results(reward_over_episodes, model_name, print_results=False):

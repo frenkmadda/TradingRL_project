@@ -39,36 +39,147 @@ def plot_rewards(rewards, model_name, total_num_episodes):
     plt.legend()
     # plt.show()
     filename = f'grafici/rewards_{model_name.lower()}.png'
-    plt.savefig(filename)
+    plt.savefig(filename, dpi=300)
     plt.close()
+
+
+def plot_rewards_comparison(rewards_dict, total_num_episodes):
+    plt.figure(figsize=(12, 6))
+
+    # change background color
+    plt.gca().set_facecolor('#ecf0f1')
+    plt.gca().set_alpha(0.5)
+
+    colors = {
+        "DQN": "royalblue",
+        "PPO": "mediumseagreen",
+        "A2C": "darkorange"
+    }
+
+    for model_name, rewards in rewards_dict.items():
+        if not rewards:
+            print(f"Attention: the rewards for the model {model_name} are empty.")
+            continue
+
+        if len(rewards) != total_num_episodes:
+            print(f"Attention: the length of rewards for {model_name} is not equal to total_num_episodes.")
+            continue
+
+        color = colors.get(model_name, "#000000")  # Default to black if model_name not found in colors
+        plt.plot(range(1, len(rewards) + 1), rewards, label=model_name, linewidth=1, color=color)
+
+    plt.xlabel("Episode")
+    plt.ylabel("Reward")
+    plt.title("Comparison of Rewards")
+    plt.legend()
+
+    plt.grid(True, which='both', linestyle='-', linewidth=0.6)
+    ax = plt.gca()
+    for spine in ax.spines.values():
+        spine.set_edgecolor('black')
+        spine.set_linewidth(1)
+
+    plt.savefig("grafici/rewards_comparison.png", dpi=300)
+    # plt.show()
 
 
 def plot_portfolio_during_evaluation(portfolio_values, buy_idx, sell_idx, hold_idx, model_name, roi):
     plt.figure(figsize=(14, 7))
-    plt.plot(portfolio_values, label='Portfolio Value')
+    plt.plot(portfolio_values, label='Portfolio Value', color='#8e44ad', linewidth=1)
+
+    # change background color
+    plt.gca().set_facecolor('#ecf0f1')
+    plt.gca().set_alpha(0.5)
 
     for b in buy_idx:
-        plt.scatter(b, portfolio_values[b], color='green', marker='^', s=100, label='Buy' if b == buy_idx[0] else "")
+        plt.scatter(b, portfolio_values[b], color='green', marker='^', s=80,
+                    label='Buy' if b == buy_idx[0] else "")
     for s in sell_idx:
         # if s > 0 and portfolio_values[s] < portfolio_values[s - 1]:  # Verifica se c'è effettivamente una vendita
-        plt.scatter(s, portfolio_values[s], color='red', marker='v', s=100, label='Sell' if s == sell_idx[0] else "")
+        plt.scatter(s, portfolio_values[s], color='red', marker='v', s=80,
+                    label='Sell' if s == sell_idx[0] else "")
     for h in hold_idx:
-        plt.scatter(h, portfolio_values[h], color='blue', marker='o', s=30, label='Hold' if h == hold_idx[0] else "")
+        plt.scatter(h, portfolio_values[h], color='#3498db', marker='o', s=30,
+                    label='Hold' if h == hold_idx[0] else "")
 
-    plt.title(f'Portfolio Value During Evaluation ({model_name}) (ROI: {roi:.2f}%)')
-    plt.xlabel('Trading Days')
-    plt.ylabel('Portfolio Value ($)')
+    roi_text = f"ROI: {roi:.2f}%"
+    plt.text(0.5, 0.95, roi_text, fontsize=14, ha='center', va='top', transform=plt.gca().transAxes,
+                bbox=dict(facecolor='white', alpha=0.5, edgecolor='black', boxstyle='round,pad=0.3'))
+
+    plt.title(f"Portfolio Value during Evaluation - {model_name}", fontsize=16)
+    plt.xlabel('Trading Days', fontsize=14)
+    plt.ylabel('Portfolio Value ($)', fontsize=14)
     plt.legend()
-    plt.grid(True, which='both', linestyle='-', linewidth=0.5)
+    plt.grid(True, which='both', linestyle='-', linewidth=0.6)
     ax = plt.gca()
     for spine in ax.spines.values():
-        spine.set_visible(True)
-        spine.set_linewidth(1.0)
+        spine.set_edgecolor('black')
+        spine.set_linewidth(1)
 
     filename = f'grafici/eval_portfolio_{model_name.lower()}.png'
     plt.savefig(filename, dpi=300)
     print(f"[Salvato grafico in {filename}]")
-    plt.close()
+    # plt.close()
+
+def plot_price(price, model_name):
+    plt.figure(figsize=(14, 7))
+    plt.plot(price, label='Price', color='#8e44ad', linewidth=1)
+
+    # change background color
+    plt.gca().set_facecolor('#ecf0f1')
+    plt.gca().set_alpha(0.5)
+
+    plt.title(f"Price during Evaluation - {model_name}", fontsize=16)
+    plt.xlabel('Trading Days', fontsize=14)
+    plt.ylabel('Price ($)', fontsize=14)
+    plt.legend()
+    plt.grid(True, which='both', linestyle='-', linewidth=0.6)
+    ax = plt.gca()
+    for spine in ax.spines.values():
+        spine.set_edgecolor('black')
+        spine.set_linewidth(1)
+
+    filename = f'grafici/eval_price_{model_name.lower()}.png'
+    plt.savefig(filename, dpi=300)
+    print(f"[Salvato grafico in {filename}]")
+
+
+def plot_action_price(price, buy_idx, sell_idx, hold_idx, model_name, roi):
+    plt.figure(figsize=(14, 7))
+    plt.plot(price, label='Price', color='#8e44ad', linewidth=1)
+
+    # change background color
+    plt.gca().set_facecolor('#ecf0f1')
+    plt.gca().set_alpha(0.5)
+
+    for b in buy_idx:
+        plt.scatter(b, price[b], color='green', marker='^', s=80,
+                    label='Buy' if b == buy_idx[0] else "")
+    for s in sell_idx:
+        # if s > 0 and portfolio_values[s] < portfolio_values[s - 1]:  # Verifica se c'è effettivamente una vendita
+        plt.scatter(s, price[s], color='red', marker='v', s=80,
+                    label='Sell' if s == sell_idx[0] else "")
+    for h in hold_idx:
+        plt.scatter(h, price[h], color='#3498db', marker='o', s=30,
+                    label='Hold' if h == hold_idx[0] else "")
+
+    roi_text = f"ROI: {roi:.2f}%"
+    plt.text(0.5, 0.95, roi_text, fontsize=14, ha='center', va='top', transform=plt.gca().transAxes,
+                bbox=dict(facecolor='white', alpha=0.5, edgecolor='black', boxstyle='round,pad=0.3'))
+
+    plt.title(f"Price during Evaluation - {model_name}", fontsize=16)
+    plt.xlabel('Trading Days', fontsize=14)
+    plt.ylabel('Price ($)', fontsize=14)
+    plt.legend()
+    plt.grid(True, which='both', linestyle='-', linewidth=0.6)
+    ax = plt.gca()
+    for spine in ax.spines.values():
+        spine.set_edgecolor('black')
+        spine.set_linewidth(1)
+
+    filename = f'grafici/eval_price_action_{model_name.lower()}.png'
+    plt.savefig(filename, dpi=300)
+    print(f"[Salvato grafico in {filename}]")
 
 
 def train_and_get_rewards(model_name, train_env, test_env, seed, total_learning_timesteps, total_num_episodes):
@@ -111,7 +222,7 @@ def train_and_get_rewards(model_name, train_env, test_env, seed, total_learning_
     else:
         model = None
 
-    rewards, info, portfolio_histories, buys, sells, holdings = utils.train_test_model(
+    rewards, info, portfolio_histories, buys, sells, holdings, price = utils.train_test_model(
         model, train_env, test_env, seed, total_learning_timesteps, total_num_episodes)
 
     # Calcolo ROI
@@ -123,7 +234,7 @@ def train_and_get_rewards(model_name, train_env, test_env, seed, total_learning_
     roi = (profit - 1) * 100
 
     # Plot e salvataggio
-    plot_rewards(rewards, model_name, total_num_episodes)
+    # plot_rewards(rewards, model_name, total_num_episodes)
     plot_portfolio_during_evaluation(
         portfolio_values=portfolio_histories[0],
         buy_idx=buys,
@@ -134,6 +245,11 @@ def train_and_get_rewards(model_name, train_env, test_env, seed, total_learning_
         model_name=model_name,
         roi=roi
     )
+
+    plot_price(price, model_name)
+    plot_action_price(price, buys, sells, holdings, model_name, roi)
+
+    return rewards
 
 
 if __name__ == "__main__":
@@ -149,15 +265,14 @@ if __name__ == "__main__":
     df.head()
 
     # split the dataset into train and test
-    train_size = int(len(df) * 0.85)
+    train_size = int(len(df) * 0.8)
     test_size = len(df) - train_size
     train_df = df[:train_size]
     test_df = df[train_size:]
 
-
     seed = 69  # Nice
-    total_num_episodes = 100
-    total_learning_timesteps = 1_000
+    total_num_episodes = 200
+    total_learning_timesteps = 100_000
 
     window_size = 15
     end_index = len(df)
@@ -175,6 +290,14 @@ if __name__ == "__main__":
     )
 
     # Using the function in train_and_test.py
-    train_and_get_rewards("DQN", train_env, test_env, seed, total_learning_timesteps, total_num_episodes)
-    train_and_get_rewards("PPO", train_env, test_env, seed, total_learning_timesteps, total_num_episodes)
-    train_and_get_rewards("A2C", train_env, test_env, seed, total_learning_timesteps, total_num_episodes)
+    dqn_rewards = train_and_get_rewards("DQN", train_env, test_env, seed, total_learning_timesteps, total_num_episodes)
+    ppo_rewards = train_and_get_rewards("PPO", train_env, test_env, seed, total_learning_timesteps, total_num_episodes)
+    a2c_rewards = train_and_get_rewards("A2C", train_env, test_env, seed, total_learning_timesteps, total_num_episodes)
+
+    rewards_dict = {
+        "DQN": dqn_rewards,
+        "PPO": ppo_rewards,
+        "A2C": a2c_rewards
+    }
+
+    plot_rewards_comparison(rewards_dict, total_num_episodes)
