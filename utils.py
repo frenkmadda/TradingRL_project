@@ -128,3 +128,4 @@ class ProgressBar(BaseCallback):
 
     def _on_training_end(self) -> None:
         self.progress_bar.close()
+

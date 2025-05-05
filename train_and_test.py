@@ -144,6 +144,7 @@ def plot_price(price, model_name):
     print(f"[Salvato grafico in {filename}]")
 
 
+
 def plot_action_price(price, buy_idx, sell_idx, hold_idx, model_name, roi):
     plt.figure(figsize=(14, 7))
     plt.plot(price, label='Price', color='#8e44ad', linewidth=1)
